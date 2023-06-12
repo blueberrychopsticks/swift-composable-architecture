@@ -22,12 +22,23 @@ private let readMe = """
 struct SpeechRecognition: ReducerProtocol {
   
   
-  struct State: Equatable, Codable {
-//    @PresentationState var alert: AlertState<Action.Alert>?
+  struct State: Equatable, CodableState {
+    @PresentationState var alert: AlertState<Action.Alert>?
     var isRecording = false
     var transcribedText = ""
     var speechIsProcessing = false
     var transcribedSegments: [String] = []
+    
+    struct CodableRepresentation: Encodable {
+      var isRecording: Bool
+//      var transcribedText: String
+//      var speechIsProcessing:  Bool
+//      var transcribedSegments: [String] = []
+    }
+
+    var codableRepresentation: CodableRepresentation {
+        return CodableRepresentation(isRecording: isRecording)
+    }
   }
   
 

@@ -31,15 +31,19 @@ struct PartialState<T>: Encodable {
     }
 }
 
-extension ReducerProtocol {
-    func encodeState(_ keyPaths: [PartialKeyPath<State>]) -> some ReducerProtocol<State, Action> {
+protocol CodableState {
+    associatedtype CodableRepresentation: Encodable
+    var codableRepresentation: CodableRepresentation { get }
+}
+
+extension ReducerProtocol where State: CodableState {
+    func encodeState() -> some ReducerProtocol<State, Action> {
         Reduce { state, action in
-//            print("Received action: \(action)")
+            print("Received action: \(action)")
             let effects = self.reduce(into: &state, action: action)
             do {
                 let encoder = JSONEncoder()
-                let partialState = PartialState(original: state, keyPaths: keyPaths)
-                let data = try encoder.encode(partialState)
+                let data = try encoder.encode(state.codableRepresentation)
                 
                 // Convert the data to a pretty-printed JSON string
                 if let jsonObject = try? JSONSerialization.jsonObject(with: data, options: []),
@@ -58,16 +62,12 @@ extension ReducerProtocol {
 }
 
 
+
 @main
 struct SpeechRecognitionApp: App {
     var body: some Scene {
         let store = Store(initialState: SpeechRecognition.State()) {
-            SpeechRecognition().encodeState(
-                [
-                    \SpeechRecognition.State.isRecording,
-                    // Add other key paths here...
-                ]
-            )
+            SpeechRecognition().encodeState()
         }
         
         WindowGroup {
