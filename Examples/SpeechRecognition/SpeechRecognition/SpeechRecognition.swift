@@ -19,29 +19,11 @@ private let readMe = """
 //  }
 //}
 
-extension SpeechRecognition.State {
-  func toEncodableState() -> SpeechRecognition.EncodableState {
-    return SpeechRecognition.EncodableState(
-      isRecording: self.isRecording,
-      transcribedText: self.transcribedText,
-      speechIsProcessing: self.speechIsProcessing,
-      transcribedSegments: self.transcribedSegments
-    )
-  }
-}
-
-
 struct SpeechRecognition: ReducerProtocol {
   
-  struct EncodableState: Codable {
-    var isRecording = false
-    var transcribedText = ""
-    var speechIsProcessing = false
-    var transcribedSegments: [String] = []
-  }
   
-  struct State: Equatable {
-    @PresentationState var alert: AlertState<Action.Alert>?
+  struct State: Equatable, Codable {
+//    @PresentationState var alert: AlertState<Action.Alert>?
     var isRecording = false
     var transcribedText = ""
     var speechIsProcessing = false
@@ -50,7 +32,7 @@ struct SpeechRecognition: ReducerProtocol {
   
 
   enum Action: Equatable {
-    case alert(PresentationAction<Alert>)
+//    case alert(PresentationAction<Alert>)
     case recordButtonTapped
     case speech(TaskResult<SpeechRecognitionResult>)
     case speechRecognizerAuthorizationStatusResponse(SFSpeechRecognizerAuthorizationStatus)
@@ -63,8 +45,8 @@ struct SpeechRecognition: ReducerProtocol {
   var body: some ReducerProtocolOf<Self> {
     Reduce { state, action in
       switch action {
-      case .alert:
-        return .none
+//      case .alert:
+//        return .none
 
       case .recordButtonTapped:
         state.isRecording.toggle()
@@ -98,13 +80,13 @@ struct SpeechRecognition: ReducerProtocol {
 
       case .speech(.failure(SpeechClient.Failure.couldntConfigureAudioSession)),
         .speech(.failure(SpeechClient.Failure.couldntStartAudioEngine)):
-        state.alert = AlertState { TextState("Problem with audio device. Please try again.") }
+//        state.alert = AlertState { TextState("Problem with audio device. Please try again.") }
         return .none
 
       case .speech(.failure):
-        state.alert = AlertState {
-          TextState("An error occurred while transcribing. Please try again.")
-        }
+//        state.alert = AlertState {
+//          TextState("An error occurred while transcribing. Please try again.")
+//        }
         return .none
 
       case let .speech(.success(result)):
@@ -140,21 +122,21 @@ struct SpeechRecognition: ReducerProtocol {
           return .none
 
         case .denied:
-          state.alert = AlertState {
-            TextState(
-              """
-              You denied access to speech recognition. This app needs access to transcribe your \
-              speech.
-              """
-            )
-          }
+//          state.alert = AlertState {
+//            TextState(
+//              """
+//              You denied access to speech recognition. This app needs access to transcribe your \
+//              speech.
+//              """
+//            )
+//          }
           return .none
 
         case .notDetermined:
           return .none
 
         case .restricted:
-          state.alert = AlertState { TextState("Your device does not allow speech recognition.") }
+//          state.alert = AlertState { TextState("Your device does not allow speech recognition.") }
           return .none
 
         @unknown default:
@@ -162,11 +144,11 @@ struct SpeechRecognition: ReducerProtocol {
         }
       }
     }
-    .ifLet(\.$alert, action: /Action.alert)
+//    .ifLet(\.$alert, action: /Action.alert)
     
     
-    Reduce<State, Action> { state, action in
-      print(state)
+//    Reduce<State, Action> { state, action in
+//      print(state)
 //      return .run { [standups = state.standupsList.standups] _ in
       
 //        try await withTaskCancellation(id: CancelID.saveDebounce, cancelInFlight: true) {
@@ -175,7 +157,7 @@ struct SpeechRecognition: ReducerProtocol {
 //        }
 //      } catch: { _, _ in
 //      }
-    }
+//    }
   }
 }
 
@@ -225,9 +207,9 @@ struct SpeechRecognitionView: View {
         // Start recording on app open, remove for PR
         viewStore.send(.recordButtonTapped)
       }
-      .onChange(of: viewStore.state, perform: { state in print(state)})
+//      .onChange(of: viewStore.state, perform: { state in print(state)})
                 
-      .alert(store: self.store.scope(state: \.$alert, action: SpeechRecognition.Action.alert))
+//      .alert(store: self.store.scope(state: \.$alert, action: SpeechRecognition.Action.alert))
     }
   }
 }
