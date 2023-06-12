@@ -194,9 +194,7 @@ struct SpeechRecognitionView: View {
         // Start recording on app open, remove for PR
         viewStore.send(.recordButtonTapped)
       }
-//      .onChange(of: viewStore.state, perform: { state in print(state)})
-                
-//      .alert(store: self.store.scope(state: \.$alert, action: SpeechRecognition.Action.alert))
+      .alert(store: self.store.scope(state: \.$alert, action: SpeechRecognition.Action.alert))
     }
   }
 }
