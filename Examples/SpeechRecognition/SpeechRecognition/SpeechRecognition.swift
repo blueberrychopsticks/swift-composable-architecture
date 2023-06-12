@@ -7,8 +7,39 @@ private let readMe = """
   Architecture. It uses the `SFSpeechRecognizer` API from the Speech framework to listen to audio \
   on the device and live-transcribe it to the UI.
   """
+//
+//public static var customDump: Self {
+//  Self { receivedAction, oldState, newState in
+//    var target = ""
+//    target.write("received action:\n")
+//    CustomDump.customDump(receivedAction, to: &target, indent: 2)
+//    target.write("\n")
+//    target.write(diff(oldState, newState).map { "\($0)\n" } ?? "  (No state changes)\n")
+//    print(target)
+//  }
+//}
+
+extension SpeechRecognition.State {
+  func toEncodableState() -> SpeechRecognition.EncodableState {
+    return SpeechRecognition.EncodableState(
+      isRecording: self.isRecording,
+      transcribedText: self.transcribedText,
+      speechIsProcessing: self.speechIsProcessing,
+      transcribedSegments: self.transcribedSegments
+    )
+  }
+}
+
 
 struct SpeechRecognition: ReducerProtocol {
+  
+  struct EncodableState: Codable {
+    var isRecording = false
+    var transcribedText = ""
+    var speechIsProcessing = false
+    var transcribedSegments: [String] = []
+  }
+  
   struct State: Equatable {
     @PresentationState var alert: AlertState<Action.Alert>?
     var isRecording = false
@@ -16,6 +47,7 @@ struct SpeechRecognition: ReducerProtocol {
     var speechIsProcessing = false
     var transcribedSegments: [String] = []
   }
+  
 
   enum Action: Equatable {
     case alert(PresentationAction<Alert>)
@@ -131,6 +163,19 @@ struct SpeechRecognition: ReducerProtocol {
       }
     }
     .ifLet(\.$alert, action: /Action.alert)
+    
+    
+    Reduce<State, Action> { state, action in
+      print(state)
+//      return .run { [standups = state.standupsList.standups] _ in
+      
+//        try await withTaskCancellation(id: CancelID.saveDebounce, cancelInFlight: true) {
+//          try await self.clock.sleep(for: .seconds(1))
+//          try await self.saveData(JSONEncoder().encode(standups), .standups)
+//        }
+//      } catch: { _, _ in
+//      }
+    }
   }
 }
 
@@ -180,6 +225,8 @@ struct SpeechRecognitionView: View {
         // Start recording on app open, remove for PR
         viewStore.send(.recordButtonTapped)
       }
+      .onChange(of: viewStore.state, perform: { state in print(state)})
+                
       .alert(store: self.store.scope(state: \.$alert, action: SpeechRecognition.Action.alert))
     }
   }
