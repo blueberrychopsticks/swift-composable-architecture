@@ -7,21 +7,8 @@ private let readMe = """
   Architecture. It uses the `SFSpeechRecognizer` API from the Speech framework to listen to audio \
   on the device and live-transcribe it to the UI.
   """
-//
-//public static var customDump: Self {
-//  Self { receivedAction, oldState, newState in
-//    var target = ""
-//    target.write("received action:\n")
-//    CustomDump.customDump(receivedAction, to: &target, indent: 2)
-//    target.write("\n")
-//    target.write(diff(oldState, newState).map { "\($0)\n" } ?? "  (No state changes)\n")
-//    print(target)
-//  }
-//}
 
 struct SpeechRecognition: ReducerProtocol {
-  
-  
   struct State: Equatable, CodableState {
     @PresentationState var alert: AlertState<Action.Alert>?
     var isRecording = false
@@ -31,19 +18,21 @@ struct SpeechRecognition: ReducerProtocol {
     
     struct CodableRepresentation: Encodable {
       var isRecording: Bool
-//      var transcribedText: String
 //      var speechIsProcessing:  Bool
-//      var transcribedSegments: [String] = []
+      var transcribedSegments: [String] = []
     }
 
     var codableRepresentation: CodableRepresentation {
-        return CodableRepresentation(isRecording: isRecording)
+        return CodableRepresentation(
+          isRecording: isRecording,
+          transcribedSegments: transcribedSegments
+        )
     }
   }
   
 
   enum Action: Equatable {
-//    case alert(PresentationAction<Alert>)
+    case alert(PresentationAction<Alert>)
     case recordButtonTapped
     case speech(TaskResult<SpeechRecognitionResult>)
     case speechRecognizerAuthorizationStatusResponse(SFSpeechRecognizerAuthorizationStatus)
@@ -56,8 +45,8 @@ struct SpeechRecognition: ReducerProtocol {
   var body: some ReducerProtocolOf<Self> {
     Reduce { state, action in
       switch action {
-//      case .alert:
-//        return .none
+      case .alert:
+        return .none
 
       case .recordButtonTapped:
         state.isRecording.toggle()
@@ -91,13 +80,13 @@ struct SpeechRecognition: ReducerProtocol {
 
       case .speech(.failure(SpeechClient.Failure.couldntConfigureAudioSession)),
         .speech(.failure(SpeechClient.Failure.couldntStartAudioEngine)):
-//        state.alert = AlertState { TextState("Problem with audio device. Please try again.") }
+        state.alert = AlertState { TextState("Problem with audio device. Please try again.") }
         return .none
 
       case .speech(.failure):
-//        state.alert = AlertState {
-//          TextState("An error occurred while transcribing. Please try again.")
-//        }
+        state.alert = AlertState {
+          TextState("An error occurred while transcribing. Please try again.")
+        }
         return .none
 
       case let .speech(.success(result)):
@@ -133,21 +122,21 @@ struct SpeechRecognition: ReducerProtocol {
           return .none
 
         case .denied:
-//          state.alert = AlertState {
-//            TextState(
-//              """
-//              You denied access to speech recognition. This app needs access to transcribe your \
-//              speech.
-//              """
-//            )
-//          }
+          state.alert = AlertState {
+            TextState(
+              """
+              You denied access to speech recognition. This app needs access to transcribe your \
+              speech.
+              """
+            )
+          }
           return .none
 
         case .notDetermined:
           return .none
 
         case .restricted:
-//          state.alert = AlertState { TextState("Your device does not allow speech recognition.") }
+          state.alert = AlertState { TextState("Your device does not allow speech recognition.") }
           return .none
 
         @unknown default:
@@ -155,20 +144,7 @@ struct SpeechRecognition: ReducerProtocol {
         }
       }
     }
-//    .ifLet(\.$alert, action: /Action.alert)
-    
-    
-//    Reduce<State, Action> { state, action in
-//      print(state)
-//      return .run { [standups = state.standupsList.standups] _ in
-      
-//        try await withTaskCancellation(id: CancelID.saveDebounce, cancelInFlight: true) {
-//          try await self.clock.sleep(for: .seconds(1))
-//          try await self.saveData(JSONEncoder().encode(standups), .standups)
-//        }
-//      } catch: { _, _ in
-//      }
-//    }
+    .ifLet(\.$alert, action: /Action.alert)
   }
 }
 
