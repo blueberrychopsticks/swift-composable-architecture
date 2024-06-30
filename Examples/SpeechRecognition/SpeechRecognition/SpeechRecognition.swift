@@ -16,45 +16,46 @@ struct SpeechRecognition: ReducerProtocol {
     var speechIsProcessing = false
     var transcribedSegments: [String] = []
   }
-
+  
   enum Action: Equatable {
     case alert(PresentationAction<Alert>)
     case recordButtonTapped
     case speech(TaskResult<SpeechRecognitionResult>)
     case speechRecognizerAuthorizationStatusResponse(SFSpeechRecognizerAuthorizationStatus)
-
+    
     enum Alert: Equatable {}
   }
-
+  
   @Dependency(\.speechClient) var speechClient
-
+  
   var body: some ReducerProtocolOf<Self> {
     Reduce { state, action in
       switch action {
       case .alert:
         return .none
-
+        
       case .recordButtonTapped:
         state.isRecording.toggle()
-
+        
         guard state.isRecording
         else {
           return .run { _ in
             await self.speechClient.finishTask()
           }
         }
-
+        
         return .run { send in
           let status = await self.speechClient.requestAuthorization()
           await send(.speechRecognizerAuthorizationStatusResponse(status))
-
+          
           guard status == .authorized
           else { return }
-
+          
           let request = SFSpeechAudioBufferRecognitionRequest()
           // Get these from the .recordButtonTapped or from recordSettings
-          request.requiresOnDeviceRecognition = true
+                    request.requiresOnDeviceRecognition = true
           request.addsPunctuation = true
+          request.taskHint = .dictation
           
           for try await result in await self.speechClient.startTask(request) {
             await send(
@@ -63,18 +64,18 @@ struct SpeechRecognition: ReducerProtocol {
         } catch: { error, send in
           await send(.speech(.failure(error)))
         }
-
+        
       case .speech(.failure(SpeechClient.Failure.couldntConfigureAudioSession)),
-        .speech(.failure(SpeechClient.Failure.couldntStartAudioEngine)):
+          .speech(.failure(SpeechClient.Failure.couldntStartAudioEngine)):
         state.alert = AlertState { TextState("Problem with audio device. Please try again.") }
         return .none
-
+        
       case .speech(.failure):
         state.alert = AlertState {
           TextState("An error occurred while transcribing. Please try again.")
         }
         return .none
-
+        
       case let .speech(.success(result)):
         /// This logic works, but I am sure it can be made more pretty
         let transcribedText = result.bestTranscription.formattedString
@@ -99,14 +100,14 @@ struct SpeechRecognition: ReducerProtocol {
         }
         
         return .none
-
+        
       case let .speechRecognizerAuthorizationStatusResponse(status):
         state.isRecording = status == .authorized
-
+        
         switch status {
         case .authorized:
           return .none
-
+          
         case .denied:
           state.alert = AlertState {
             TextState(
@@ -117,14 +118,14 @@ struct SpeechRecognition: ReducerProtocol {
             )
           }
           return .none
-
+          
         case .notDetermined:
           return .none
-
+          
         case .restricted:
           state.alert = AlertState { TextState("Your device does not allow speech recognition.") }
           return .none
-
+          
         @unknown default:
           return .none
         }
@@ -136,51 +137,64 @@ struct SpeechRecognition: ReducerProtocol {
 
 struct SpeechRecognitionView: View {
   let store: StoreOf<SpeechRecognition>
-
+  
+  @Namespace var topID
+  @Namespace var bottomID
+  
   var body: some View {
     WithViewStore(self.store, observe: { $0 }) { viewStore in
-      VStack {
-        VStack(alignment: .leading) {
-          Text(readMe)
-            .padding(.bottom, 32)
-        }
-
-        ScrollView {
-          ScrollViewReader { proxy in
-            ForEach(viewStore.transcribedSegments, id: \.self) { segment in
-              Text(segment)
-                .font(.largeTitle)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-             }
+      ScrollView {
+        ScrollViewReader { proxy in
+          Button("Scroll to Bottom") {
+            withAnimation {
+              proxy.scrollTo(bottomID)
+            }
           }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-
-        Spacer()
-
-        Button {
-          viewStore.send(.recordButtonTapped)
-        } label: {
-          HStack {
-            Image(
-              systemName: viewStore.isRecording
+          .id(topID)
+          ForEach(viewStore.transcribedSegments, id: \.self) { segment in
+            Text(segment)
+              .font(.largeTitle)
+              .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+          }
+          
+          
+          .frame(maxWidth: .infinity, maxHeight: .infinity,  alignment: .topLeading)
+          
+          
+          Spacer()
+          
+          Button("Top") {
+            withAnimation {
+              proxy.scrollTo(topID)
+            }
+          }
+          .id(bottomID)
+          
+          Button {
+            viewStore.send(.recordButtonTapped)
+          } label: {
+            HStack {
+              Image(
+                systemName: viewStore.isRecording
                 ? "stop.circle.fill" : "arrowtriangle.right.circle.fill"
-            )
-            .font(.title)
-            Text(viewStore.isRecording ? "Stop Recording" : "Start Recording")
+              )
+              .font(.title)
+              Text(viewStore.isRecording ? "Stop Recording" : "Start Recording")
+            }
+            .foregroundColor(.white)
+            .padding()
+            .background(viewStore.isRecording ? Color.red : .green)
+            .cornerRadius(16)
+            
           }
-          .foregroundColor(.white)
           .padding()
-          .background(viewStore.isRecording ? Color.red : .green)
-          .cornerRadius(16)
+          .onAppear {
+            // Start recording on app open, remove for PR
+            viewStore.send(.recordButtonTapped)
+          }
+          .alert(store: self.store.scope(state: \.$alert, action: SpeechRecognition.Action.alert))
         }
       }
-      .padding()
-      .onAppear {
-        // Start recording on app open, remove for PR
-        viewStore.send(.recordButtonTapped)
-      }
-      .alert(store: self.store.scope(state: \.$alert, action: SpeechRecognition.Action.alert))
     }
   }
 }

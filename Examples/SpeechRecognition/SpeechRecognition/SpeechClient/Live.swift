@@ -4,6 +4,15 @@ import Speech
 extension SpeechClient: DependencyKey {
   static var liveValue: Self {
     let speech = Speech()
+    NotificationCenter.default.publisher(for: AVAudioSession.routeChangeNotification)
+      .sink { notification in
+        print(notification)
+      }
+    
+    NotificationCenter.default.publisher(for: AVAudioSession.interruptionNotification)
+      .sink { notification in
+        print(notification)
+      }
     return Self(
       finishTask: {
         await speech.finishTask()
@@ -34,18 +43,43 @@ private actor Speech {
     self.recognitionTask?.finish()
     self.recognitionContinuation?.finish()
   }
+  
+//  @objc func handleRouteChange(notification: Notification) async {
+//      guard let userInfo = notification.userInfo,
+//          let reasonValue = userInfo[AVAudioSessionRouteChangeReasonKey] as? UInt,
+//          let reason = AVAudioSession.RouteChangeReason(rawValue:reasonValue) else {
+//              return
+//      }
+//      
+//      // Switch over the route change reason.
+//      switch reason {
+//      case .newDeviceAvailable:
+//          print("New Device Available")
+//      case .oldDeviceUnavailable:
+//          print("Old Device Unavailable")
+//      // ... handle other cases
+//      default: ()
+//      }
+//  }
+
 
   func startTask(
     request: UncheckedSendable<SFSpeechAudioBufferRecognitionRequest>
   ) -> AsyncThrowingStream<SpeechRecognitionResult, Error> {
     let request = request.wrappedValue
+    
 
     return AsyncThrowingStream { continuation in
       self.recognitionContinuation = continuation
       let audioSession = AVAudioSession.sharedInstance()
+      
+      
+      
+      
       do {
-        try audioSession.setCategory(.record, mode: .measurement, options: .duckOthers)
-        try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
+        try! audioSession.setCategory(.record, options: [.mixWithOthers, .allowAirPlay, .allowBluetoothA2DP, .defaultToSpeaker ])
+
+        try audioSession.setActive(true)
       } catch {
         continuation.finish(throwing: SpeechClient.Failure.couldntConfigureAudioSession)
         return
@@ -77,13 +111,19 @@ private actor Speech {
         audioEngine.wrappedValue?.inputNode.removeTap(onBus: 0)
         recognitionTask.wrappedValue?.finish()
       }
+      
+    
 
       self.audioEngine?.inputNode.installTap(
         onBus: 0,
         bufferSize: 1024,
         format: self.audioEngine?.inputNode.outputFormat(forBus: 0)
       ) { buffer, when in
+        print(Date.now)
         request.append(buffer)
+//        print(audioSession.isOtherAudioPlaying)
+//        print(audioSession.availableModes)
+//        print(audioSession.availableCategories)
       }
 
       self.audioEngine?.prepare()
